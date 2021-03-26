@@ -1,0 +1,6 @@
+.idea
+config.py
+*test*
+*.csv
+*.json
+*.xlsx
