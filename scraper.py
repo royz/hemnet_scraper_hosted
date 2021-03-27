@@ -172,8 +172,26 @@ class Faktakontroll:
     def __init__(self):
         self.access_token = None
         self.access_token_valid_till = 0
-        self.session = requests.session()
-        self.session.headers = {'api-key': config.fk_api_key}
+        self.token_server_session = requests.session()
+        self.token_server_session.headers = {'api-key': config.fk_api_key}
+
+    @property
+    def faktakontroll_headers(self):
+        return {
+            'Connection': 'keep-alive',
+            'Accept': 'application/json, text/plain, */*',
+            'X-Initialized-At': str(int(time.time() * 1000)),
+            'X-Auth-Token': self.get_token(),
+            'User-Agent': USER_AGENT,
+            'DNT': '1',
+            'Content-Type': 'application/json;charset=UTF-8',
+            'Origin': 'https://www.faktakontroll.se',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Dest': 'empty',
+            'Referer': 'https://www.faktakontroll.se/app/sok',
+            'Accept-Language': 'en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7',
+        }
 
     def get_token(self):
         if self.access_token and self.access_token_valid_till > time.time():
@@ -195,6 +213,66 @@ class Faktakontroll:
         except:
             print('could not get access token for faktakontroll')
             return None
+
+    def search(self, search_string, try_count=0):
+
+        data = {
+            "searchString": search_string,
+            "filterType": "p",
+            "subscriptionRefNo": "20.750.025.01"
+        }
+        try:
+            response = requests.post('https://www.faktakontroll.se/app/api/search',
+                                     headers=self.faktakontroll_headers, json=data)
+
+            # if failed to get 200 response then try once more
+            if response.status_code != 200:
+                if try_count == 0:
+                    print('could not get result from faktakontroll. retrying...')
+                    return self.search(search_string, 1)
+                else:
+                    print('could not get result from faktakontroll')
+                    return None
+
+            data = response.json()
+            results = data['hits']
+            return [result['individual'] for result in results if result.get('individual')]
+
+        except Exception as e:
+            if try_count == 0:
+                print(f'error while searching address on faktakontroll. error: {e}. retrying...')
+                return self.search(search_string, 1)
+            else:
+                print(f'error while searching address on faktakontroll. error: {e}')
+                return None
+
+    def get_more_details(self, result_id):
+        params = {'subscriptionRefNo': '20.750.025.01'}
+
+        try:
+            response = requests.get(f'https://www.faktakontroll.se/app/api/search/entity/{result_id}',
+                                    headers=self.faktakontroll_headers, params=params)
+
+            data = response.json()['individual']
+
+            try:
+                phone_numbers = [phone_number['phoneNumber'] for phone_number in data['phoneNumbers']]
+            except:
+                phone_numbers = []
+
+            return {
+                'numbers': phone_numbers,
+                'age': data.get('age'),
+                'gender': data.get('gender'),
+                'personal_number': data.get('personalNumber')
+            }
+        except:
+            return {
+                'numbers': [],
+                'age': None,
+                'gender': None,
+                'personal_number': None
+            }
 
 
 if __name__ == '__main__':
