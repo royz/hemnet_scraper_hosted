@@ -264,14 +264,14 @@ class Faktakontroll:
                 'numbers': phone_numbers,
                 'age': data.get('age'),
                 'gender': data.get('gender'),
-                'personal_number': data.get('personalNumber')
+                'person_number': data.get('personalNumber')
             }
         except:
             return {
                 'numbers': [],
                 'age': None,
                 'gender': None,
-                'personal_number': None
+                'person_number': None
             }
 
 
