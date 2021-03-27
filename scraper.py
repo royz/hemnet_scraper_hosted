@@ -69,7 +69,53 @@ class Hemnet:
         return results
 
     def get_details(self, result):
-        response = self.session.get(result['url'])
+        try:
+            response = self.session.get(result['url'])
+            datalayer_text = re.findall(r'dataLayer *?= *?.*?;', response.text)[0]
+            datalayer_text = datalayer_text[datalayer_text.index('['):-1]
+            datalayer = json.loads(datalayer_text)
+
+            _property = None
+            for dl in datalayer:
+                _property = dl.get('property')
+                if _property:
+                    break
+            if not _property:
+                print('property not found')
+                return None
+
+            # get address
+            street_address = _property.get('street_address')
+            try:
+                street_address = street_address.split(',')[0]
+            except:
+                pass
+
+            # get floor
+            try:
+                matches = re.findall(r'\d+ ?tr', _property.get('street_address'))
+                if len(matches) > 0:
+                    floor = re.match(r'\d+', matches[0])[0]
+                else:
+                    floor = None
+            except:
+                floor = None
+
+            return {
+                'id': _property.get('id'),
+                'city': _property.get('location'),
+                'street_address': street_address,
+                'floor': floor,
+                'area': _property.get('living_area'),
+                'extra_area': _property.get('supplemental_area'),
+                'publication_date': _property.get('publication_date'),
+                'complete': False,
+                'sold_date': None,
+                'matches': []
+            }
+        except Exception as e:
+            print(f'could not get data for [{result["url"]}]. errorL: {e}')
+            return None
 
     @staticmethod
     def parse_area(area_string):
