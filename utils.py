@@ -1,9 +1,7 @@
 import os
 import re
-import csv
 import time
 import json
-from pprint import pprint
 import config
 import requests
 from bs4 import BeautifulSoup
@@ -275,15 +273,71 @@ class Faktakontroll:
             }
 
 
-if __name__ == '__main__':
-    locations = [{
-        'city': 'Stockholms län',
-        'id': '17744'
-    }, {
-        'city': 'Stockholms län',
-        'id': '17744'
-    }]
+def find_matches(hemnet_result, faktakontroll_result):
+    matches = []
+    for result in faktakontroll_result:
+        is_match = True
 
-    h = Hemnet(locations[0])
-    res = h.search()
-    pprint(res)
+        # get floor number
+        street_address = result['fbfStreetAddress']
+
+        if 'lgh' in street_address:
+            staddr = street_address[street_address.index('lgh'):]
+            floor = int(re.findall(r'\d', staddr)[1])
+            try:
+                apartment = re.findall(r'\d{4}', staddr)[0]
+            except:
+                apartment = None
+        else:
+            floor = None
+            apartment = None
+
+        # get name
+        try:
+            first_name = result.get('firstNames')
+            middle_name = result.get('middleNames')
+            last_name = result.get('lastNames')
+
+            name = first_name or ''
+            if middle_name:
+                name += f' {middle_name}'
+            if last_name:
+                name += f' {last_name}'
+        except:
+            name = ''
+
+        # get area
+        try:
+            area = result['housingInfo']['area']
+        except:
+            area = None
+
+        # check if the data matches with hemnet data
+        potential_match = {'full_match': True}
+
+        try:
+            if hemnet_result['area'] == area:
+                pass
+            elif area - 1 < hemnet_result['area'] < area + 1:
+                potential_match['full_match'] = False
+            else:
+                is_match = False
+        except:
+            is_match = False
+
+        if (hemnet_result['floor'] is None and floor == 0) or (hemnet_result['floor'] == 0 and floor is None):
+            is_match = False
+
+        elif hemnet_result['floor'] and floor:
+            # if both hemnet and faktakontroll have floor info then check if they match
+            if hemnet_result['floor'] != floor:
+                # if the floors don't match, then don't include them as a match
+                is_match = False
+
+        matches.append({
+            'name': name,
+            'floor': floor,
+            'apartment': apartment,
+            'street_address': street_address
+        })
+    return matches
