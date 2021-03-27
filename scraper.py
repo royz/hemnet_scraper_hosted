@@ -1,12 +1,11 @@
 import os
 import re
 import csv
+import time
 import json
 from pprint import pprint
-
 import config
 import requests
-import openpyxl
 from bs4 import BeautifulSoup
 
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' \
@@ -18,8 +17,6 @@ class Hemnet:
         self.location_id = location['id']
         self.location_name = location['city']
         self.results = None
-        self.new_results = 0
-        self.old_results = 0
         self.session = None
         self.load_results()
         self.init_session()
@@ -117,25 +114,11 @@ class Hemnet:
             print(f'could not get data for [{result["url"]}]. errorL: {e}')
             return None
 
-    @staticmethod
-    def parse_area(area_string):
-        # remove any extra characters from the area value
-        area_string = area_string.strip()
-        if area_string.endswith('m²'):
-            area_string = area_string[:len('m²')].strip().replace(',', '.')
-        area_strings = area_string.split('+')
-        area = float(area_strings[0].strip())
-        if len(area_strings) > 1:
-            extra_area = float(area_strings[1].strip())
-        else:
-            extra_area = None
-        return area, extra_area
-
     def save_results(self):
         # create the cache folder if it doesn't exist
-        os.makedirs(os.path.join(config.BASE_DIR, 'cache'), exist_ok=True)
+        os.makedirs(config.CACHE_DIR, exist_ok=True)
 
-        with open(os.path.join(config.BASE_DIR, 'cache', f'{self.location_id}.json'), 'w', encoding='utf-8') as f:
+        with open(os.path.join(config.CACHE_DIR, f'{self.location_id}.json'), 'w', encoding='utf-8-sig') as f:
             json.dump(self.results, f, indent=2)
 
     def load_results(self):
@@ -146,57 +129,9 @@ class Hemnet:
         else:
             self.results = {}
 
-    @staticmethod
-    def get_more_data(url):
-        headers = {
-            'authority': 'www.hemnet.se',
-            'user-agent': USER_AGENT,
-            'sec-fetch-site': 'same-origin',
-            'sec-fetch-mode': 'navigate',
-            'sec-fetch-user': '?1',
-            'sec-fetch-dest': 'document',
-        }
-
-        response = requests.get(url, headers=headers)
-        # with open('resp.html', 'w', encoding='utf-8') as f:
-        #     f.write(response.text)
-        #     quit()
-
-        # find publish date
-        matches = re.findall(r'(?<="publication_date":")(.*?)(?=")', response.text)
-        if matches:
-            publication_date = matches[0]
-        else:
-            publication_date = None
-
-        # find housing type
-        matches = re.findall(r'(?<="housing_form":")(.*?)(?=")', response.text)
-        if matches:
-            housing_form = matches[0]
-        else:
-            housing_form = None
-
-        return {
-            'publication_date': publication_date,
-            'housing_form': housing_form
-        }
-
     def search_sold_properties(self):
-        headers = {
-            'authority': 'www.hemnet.se',
-            'upgrade-insecure-requests': '1',
-            'dnt': '1',
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.104 Safari/537.36',
-            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-            'sec-fetch-site': 'same-origin',
-            'sec-fetch-mode': 'navigate',
-            'sec-fetch-user': '?1',
-            'sec-fetch-dest': 'document',
-            'accept-language': 'en-IN,en-GB;q=0.9,en-US;q=0.8,en;q=0.7,sv;q=0.6',
-        }
-
-        sold_properties = []
-
+        sold_property_links = []
+        print('getting sold properties on hemnet')
         for page_num in range(1, 51):
             print(f'page: {page_num}')
             params = {
@@ -205,32 +140,19 @@ class Hemnet:
                 'page': page_num
             }
 
-            response = requests.get('https://www.hemnet.se/salda/bostader', headers=headers, params=params)
+            response = self.session.get('https://www.hemnet.se/salda/bostader', params=params)
             soup = BeautifulSoup(response.content, 'html.parser')
             links = soup.find_all('a', {'class': 'sold-property-listing'})
             for link in links:
                 href = link['href']
-                sold_properties.append(href)
-        return sold_properties
+                sold_property_links.append(href)
+        return sold_property_links
 
-    @staticmethod
-    def get_sold_property_id(property_link):
-        headers = {
-            'authority': 'www.hemnet.se',
-            'user-agent': USER_AGENT,
-            'sec-fetch-site': 'same-origin',
-            'sec-fetch-mode': 'navigate',
-            'sec-fetch-user': '?1',
-            'sec-fetch-dest': 'document',
-        }
-
+    def get_sold_property_date(self, property_link):
         try:
-            sold_date = 'sold but date not found'
-            resp = requests.get(property_link, headers=headers)
-
-            # with open('hemnet-error.html', 'w', encoding='utf-8') as f:
-            #     f.write(resp.text)
-
+            sold_date = 'date not found'
+            prop_id = None
+            resp = self.session.get(property_link)
             datalayer_text = re.findall(r'(?<=dataLayer = )(.*)(?=;)', resp.text)[0]
             datalayer = json.loads(datalayer_text)
             for dl in datalayer:
@@ -247,7 +169,32 @@ class Hemnet:
 
 
 class Faktakontroll:
-    pass
+    def __init__(self):
+        self.access_token = None
+        self.access_token_valid_till = 0
+        self.session = requests.session()
+        self.session.headers = {'api-key': config.fk_api_key}
+
+    def get_token(self):
+        if self.access_token and self.access_token_valid_till > time.time():
+            return self.access_token
+
+        try:
+            response = requests.post(f'{config.host}/getToken', headers={
+                'api-key': config.fk_api_key
+            })
+            if response.status_code == 200:
+                data = response.json()
+                self.access_token = data['accessToken']
+                self.access_token_valid_till = time.time() + data['validFor']
+                print(f'faktakontroll access token updated. valid for: {data["validFor"]}s')
+                return self.access_token
+            else:
+                print('could not get access token for faktakontroll')
+                return None
+        except:
+            print('could not get access token for faktakontroll')
+            return None
 
 
 if __name__ == '__main__':
