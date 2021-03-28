@@ -71,6 +71,8 @@ class Hemnet:
         return results
 
     def get_details(self, result):
+        if config.env != 'dev':
+            time.sleep(random.randint(2, 5))
         try:
             response = self.session.get(result['url'])
             datalayer_text = re.findall(r'dataLayer *?= *?.*?;', response.text)[0]
@@ -340,6 +342,8 @@ class Faktakontroll:
             return None
 
     def search(self, search_string, try_count=0):
+        if config.env != 'dev':
+            time.sleep(random.randint(2, 5))
 
         data = {
             "searchString": search_string,
@@ -366,14 +370,15 @@ class Faktakontroll:
         except Exception as e:
             if try_count == 0:
                 logger.warning(f'error while searching address on faktakontroll. error: {e}. retrying...')
-                time.sleep(random.randint(2, 5))
                 return self.search(search_string, 1)
             else:
                 logger.error(f'error while searching address on faktakontroll. error: {e}')
                 return None
 
     def get_more_details(self, result_id):
-        time.sleep(random.randint(2, 5))
+        if config.env != 'dev':
+            time.sleep(random.randint(2, 5))
+
         params = {'subscriptionRefNo': '20.750.025.01'}
 
         try:
@@ -463,7 +468,6 @@ class Faktakontroll:
                     is_match = False
                 elif floor > hemnet_result['floor'] + 1:
                     is_match = False
-
 
             if is_match:
                 extra_info = self.get_more_details(result['id'])
