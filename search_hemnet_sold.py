@@ -2,7 +2,7 @@ import os
 import config
 from utils import Hemnet
 import json
-from logger import get_logger
+from config import logger
 
 LAST_LOCATION_INDEX_FILE = os.path.join(config.CACHE_DIR, 'last_sold_loc.txt')
 SOLD_PROPERTY_CACHE_FILE = os.path.join(config.CACHE_DIR, 'sold-cache.json')
@@ -27,7 +27,6 @@ def get_location():
 
 
 def main():
-    logger = get_logger()
     location = get_location()
     hemnet = Hemnet(location)
 
