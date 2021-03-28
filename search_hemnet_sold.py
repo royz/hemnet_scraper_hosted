@@ -45,10 +45,9 @@ def main():
     logger.info(f'{len(sold_properties_links)} sold properties found. {len(new_sold_properties)} new')
 
     for i, sold_prop_link in enumerate(new_sold_properties):
-        logger.info(f'getting sold date for ({i + 1}/{len(new_sold_properties)}):', end=' ')
         sold = hemnet.get_sold_property_date(sold_prop_link)
         if sold:
-            logger.debug(sold['id'], f'({sold["date"]})')
+            logger.debug(f'({i + 1}/{len(new_sold_properties)}) {sold["id"]}: {sold["date"]}')
             sold_property_cache[sold_prop_link] = sold
 
     all_sold_properties = {sp['id']: sp['date'] for sp in sold_property_cache.values()}

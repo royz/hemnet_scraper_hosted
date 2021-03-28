@@ -6,3 +6,4 @@ config.py
 *.xlsx
 *.txt
 get_ignored_locations
+logs
