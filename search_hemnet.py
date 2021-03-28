@@ -2,14 +2,11 @@ import os
 import config
 from utils import Hemnet
 
-LAST_LOCATION_INDEX_FILE = os.path.join(config.BASE_DIR, 'last_loc.txt')
+LAST_LOCATION_INDEX_FILE = os.path.join(config.CACHE_DIR, 'last_loc.txt')
 
 
 def get_location():
-    locations = [
-        {'id': '17744', 'location': 'Stockholms län'},
-        {'id': '17920', 'location': 'Göteborgs kommun'},
-    ]
+    locations = config.locations
 
     # read index of last searched location
     try:

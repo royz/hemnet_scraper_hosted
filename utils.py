@@ -150,33 +150,39 @@ class Hemnet:
                 'location_ids[]': self.location_id,
                 'page': page_num
             }
-
-            response = self.session.get('https://www.hemnet.se/salda/bostader', params=params)
-            soup = BeautifulSoup(response.content, 'html.parser')
-            links = soup.find_all('a', {'class': 'sold-property-listing'})
+            try:
+                response = self.session.get('https://www.hemnet.se/salda/bostader', params=params)
+                soup = BeautifulSoup(response.content, 'html.parser')
+                links = soup.find_all('a', {'class': 'sold-property-listing'})
+            except:
+                links = []
             for link in links:
-                href = link['href']
-                sold_property_links.append(href)
+                try:
+                    href = link['href']
+                    sold_property_links.append(href)
+                except:
+                    pass
         return sold_property_links
 
     def get_sold_property_date(self, property_link):
+        sold_date = 'date not found'
+        prop_id = None
         try:
-            sold_date = 'date not found'
-            prop_id = None
             resp = self.session.get(property_link)
             datalayer_text = re.findall(r'(?<=dataLayer = )(.*)(?=;)', resp.text)[0]
             datalayer = json.loads(datalayer_text)
             for dl in datalayer:
                 try:
                     if 'property' in dl.keys():
-                        prop_id = dl['property']['id']
+                        prop_id = str(dl['property']['id'])
                     if 'sold_property' in dl.keys():
                         sold_date = dl['sold_property']['sold_at_date']
                 except:
                     pass
-            return prop_id, sold_date
+            if prop_id:
+                return {'date': sold_date, 'id': prop_id}
         except Exception as e:
-            return None, None
+            return None
 
 
 class Faktakontroll:
