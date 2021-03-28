@@ -2,6 +2,7 @@ import os
 import config
 from utils import Hemnet
 import json
+from logger import get_logger
 
 LAST_LOCATION_INDEX_FILE = os.path.join(config.CACHE_DIR, 'last_sold_loc.txt')
 SOLD_PROPERTY_CACHE_FILE = os.path.join(config.CACHE_DIR, 'sold-cache.json')
@@ -26,6 +27,7 @@ def get_location():
 
 
 def main():
+    logger = get_logger()
     location = get_location()
     hemnet = Hemnet(location)
 
@@ -36,17 +38,17 @@ def main():
     except:
         sold_property_cache = {}
 
-    print(f'getting list of sold properties for: {location["location"]}')
+    logger.info(f'getting list of sold properties for: {location["location"]}')
 
     sold_properties_links = hemnet.search_sold_properties()
     new_sold_properties = [spl for spl in sold_properties_links if spl not in sold_property_cache]
-    print(f'{len(sold_properties_links)} sold properties found. {len(new_sold_properties)} new')
+    logger.info(f'{len(sold_properties_links)} sold properties found. {len(new_sold_properties)} new')
 
     for i, sold_prop_link in enumerate(new_sold_properties):
-        print(f'getting sold date for ({i + 1}/{len(new_sold_properties)}):', end=' ')
+        logger.info(f'getting sold date for ({i + 1}/{len(new_sold_properties)}):', end=' ')
         sold = hemnet.get_sold_property_date(sold_prop_link)
         if sold:
-            print(sold['id'], f'({sold["date"]})')
+            logger.debug(sold['id'], f'({sold["date"]})')
             sold_property_cache[sold_prop_link] = sold
 
     all_sold_properties = {sp['id']: sp['date'] for sp in sold_property_cache.values()}
@@ -54,9 +56,9 @@ def main():
     try:
         with open(SOLD_PROPERTY_CACHE_FILE, 'w', encoding='utf-8') as f:
             json.dump(sold_property_cache, f)
-        print('saved sold property cache')
+        logger.info('saved sold property cache')
     except:
-        print('could not save sold property cache')
+        logger.error('could not save sold property cache')
 
     for property_id in hemnet.results.keys():
         if property_id in all_sold_properties:
