@@ -44,16 +44,18 @@ def main():
     location = Location()
     faktakontroll = Faktakontroll()
     while True:
-        # run the script between 8 - 20 swedish time
-        now = datetime.datetime.now(pytz.timezone('Europe/Stockholm'))
-        hour = now.hour
-        minute = str(now.minute).rjust(2, '0')
-        if hour < 8 or hour > 20:
-            print(f'current time: {hour}:{minute}. office hour not started yet')
-            time.sleep(15 * 60)
-            continue
 
         if config.env != 'dev':
+            # run the script between 8 - 20 swedish time
+            now = datetime.datetime.now(pytz.timezone('Europe/Stockholm'))
+            hour = now.hour
+            minute = str(now.minute).rjust(2, '0')
+            if hour < 8 or hour > 20:
+                print(f'current time: {hour}:{minute}. office hour not started yet')
+                time.sleep(15 * 60)
+                continue
+
+            # randomly sleep between 60 and 90 seconds
             random_time = random.randint(60, 90)
             logger.debug(f'sleeping for {random_time} sec')
             time.sleep(random_time)
