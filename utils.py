@@ -3,6 +3,9 @@ import random
 import re
 import time
 import json
+
+import openpyxl
+
 import config
 import requests
 from bs4 import BeautifulSoup
@@ -195,6 +198,93 @@ class Hemnet:
                 return {'date': sold_date, 'id': prop_id}
         except Exception as e:
             return None
+
+    def save_xlsx(self):
+        logger.info('saving data in excel file...')
+        headers = ['Id', 'Tot Hits', 'Tot Apartments', 'Address', 'City', 'Bostadstyp', 'Area', 'Extra Area',
+                   'Floor', 'Name', 'Kön', 'Personnr', 'Ålder'] + [
+                      'Phone 1', 'Phone 2', 'Phone 3', 'Phone 4', 'Phone 5', 'Phone 6',
+                  ] + ['Apartment', 'Type', 'Publish Date', 'Sold']
+
+        data = []
+        for match_id, entry in self.results.items():
+            if not entry['complete'] or entry['matches'] == []:
+                continue
+
+            address = entry.get('street_address') or ''
+            city = entry.get('city') or ''
+            house_type = entry.get('house_type') or ''
+            area = entry.get('area') or ''
+            extra_area = entry.get('extra_area') or ''
+            floor = entry.get('floor') or ''
+            total_matches = len(entry['matches'])
+            apartments = []
+            sold = entry.get('sold')
+            row_template = [match_id, total_matches, 1, address, city, house_type, area, extra_area, floor]
+
+            new_rows = []
+            for match in entry['matches']:
+                new_row = row_template.copy()
+                apartment = match['apartment'] or ''
+                if match['apartment'] and match['apartment'] in apartments:
+                    pass
+                else:
+                    apartments.append(match['apartment'])
+
+                new_row += [match['name'], match.get('gender') or '', match.get('personal_number') or '',
+                            match.get('age') or '',
+                            ] + self.get_phone_columns(match['phone']) + [
+                               f'lgh {apartment}' if apartment else '',
+                               'Full' if match[
+                                   'full_match'] else 'Partial',
+                               entry.get('publication_date'),
+                               sold
+                           ]
+                new_rows.append(new_row)
+
+                # check if apartment is empty then number of apartments would be 1
+                for row in new_rows:
+                    if row[len(row_template) + 10].strip() == '':
+                        row[2] = 1
+                    else:
+                        row[2] = len(apartments)
+
+            if len(new_rows) <= 8:
+                data.extend(new_rows)
+
+        # create the excel workbook
+        wb = openpyxl.Workbook()
+        sheet = wb.active
+        sheet.append(headers)
+        for row in data:
+            sheet.append(row)
+
+        # freeze the header
+        sheet.freeze_panes = 'A2'
+
+        # add filters to all columns
+        sheet.auto_filter.ref = sheet.dimensions
+
+        # save the workbook
+        filename = os.path.join(config.DOC_DIR, f'{self.location_name}.xlsx')
+
+        # try to save the file at most 3 times in case some error occurs
+        for _ in range(3):
+            try:
+                wb.save(filename)
+                print(f'data saved as "{filename}"')
+                break
+            except:
+                time.sleep(random.randint(2, 5))
+                logger.error(f'could not save "{filename}". retrying...')
+
+    @staticmethod
+    def get_phone_columns(phone_numbers):
+        if len(phone_numbers) > 6:
+            phone_numbers = phone_numbers[:6]
+        elif len(phone_numbers) < 6:
+            phone_numbers += [''] * (6 - len(phone_numbers))
+        return phone_numbers
 
 
 class Faktakontroll:
