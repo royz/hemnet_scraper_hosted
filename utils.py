@@ -107,6 +107,7 @@ class Hemnet:
 
             self.results[property_id] = {
                 'id': property_id,
+                'url': result['url'],
                 'city': _property.get('location'),
                 'street_address': street_address,
                 'floor': floor,
