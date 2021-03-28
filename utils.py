@@ -270,12 +270,14 @@ class Faktakontroll:
         except Exception as e:
             if try_count == 0:
                 logger.warning(f'error while searching address on faktakontroll. error: {e}. retrying...')
+                time.sleep(random.randint(2, 5))
                 return self.search(search_string, 1)
             else:
                 logger.error(f'error while searching address on faktakontroll. error: {e}')
                 return None
 
     def get_more_details(self, result_id):
+        time.sleep(random.randint(2, 5))
         params = {'subscriptionRefNo': '20.750.025.01'}
 
         try:
