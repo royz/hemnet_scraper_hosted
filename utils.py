@@ -132,7 +132,7 @@ class Hemnet:
         for _ in range(3):
             try:
                 with open(cache_file, 'w', encoding='utf-8-sig') as f:
-                    json.dump(self.results, f, indent=2)
+                    json.dump(self.results, f)
                 logger.info(f'cache saved as: {cache_file}')
                 break
             except:
