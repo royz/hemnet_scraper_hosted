@@ -26,14 +26,15 @@ class Location:
         # read the cache file
         cache_file = os.path.join(config.CACHE_DIR, f'{loc["id"]}.json')
         try:
+            logger.debug(f'reading cache: {cache_file}')
             with open(cache_file, encoding='utf-8-sig') as f:
                 cache = json.load(f)
                 for loc_id, info in cache.items():
                     if not info['complete']:
                         return info, loc
                 return None, None
-        except:
-            logger.error(f'could not read {cache_file}')
+        except Exception as e:
+            logger.error(f'could not read {cache_file}. error: {e}')
             return None, None
 
 
@@ -50,12 +51,16 @@ def main():
         try:
             hemnet_result = None
             hemnet_location = None
-            for _ in range(len(config.locations)):
+
+            # try to get location for the same number of times as the  total number of locations
+            #  in case, new search result for a location on hemnet not found
+            for _ in config.locations:
                 hemnet_result, hemnet_location = location.next
                 if hemnet_result:
                     break
 
-            if not hemnet_result or hemnet_location:
+            if not hemnet_result or not hemnet_location:
+                logger.info('new hemnet result not found')
                 continue
 
             hemnet = Hemnet(hemnet_location)
