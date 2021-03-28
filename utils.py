@@ -1,4 +1,5 @@
 import os
+import random
 import re
 import time
 import json
@@ -121,9 +122,17 @@ class Hemnet:
     def save_results(self):
         os.makedirs(config.CACHE_DIR, exist_ok=True)
         cache_file = os.path.join(config.CACHE_DIR, f'{self.location_id}.json')
-        with open(cache_file, 'w', encoding='utf-8-sig') as f:
-            json.dump(self.results, f, indent=2)
-        print(f'cache saved as: {cache_file}')
+
+        # other scripts might try to access this file at the same time.
+        # so try to save it 3 times if failed to save
+        for _ in range(3):
+            try:
+                with open(cache_file, 'w', encoding='utf-8-sig') as f:
+                    json.dump(self.results, f, indent=2)
+                print(f'cache saved as: {cache_file}')
+                break
+            except:
+                time.sleep(random.randint(3, 10))
 
     def load_results(self):
         old_result_path = os.path.join(config.CACHE_DIR, f'{self.location_id}.json')
