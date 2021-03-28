@@ -155,7 +155,8 @@ class Hemnet:
         sold_property_links = []
         logger.info('getting sold properties on hemnet')
         for page_num in range(1, 51):
-            logger.debug(f'page: {page_num}')
+            if page_num % 10 == 0:
+                logger.debug(f'{self.location_name} sold properties: page {page_num}')
             params = {
                 'housing_form_groups[]': ['houses', 'row_houses', 'apartments'],
                 'location_ids[]': self.location_id,
