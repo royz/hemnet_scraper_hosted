@@ -1,6 +1,7 @@
 import os
 import config
 from utils import Hemnet
+from logger import get_logger
 
 LAST_LOCATION_INDEX_FILE = os.path.join(config.CACHE_DIR, 'last_loc.txt')
 
@@ -24,16 +25,17 @@ def get_location():
 
 
 def main():
+    logger = get_logger()
     location = get_location()
     hemnet = Hemnet(location)
     search_results = hemnet.search()
 
     results_count = len(search_results)
-    print(f'{results_count} new results found for: {location["location"]}')
+    logger.info(f'{results_count} new results found for: {location["location"]}')
 
     for i, search_result in enumerate(search_results):
         if i == (results_count - 1) or (i + 1) % 10 == 0 and i != 1:
-            print(f'{i + 1} of {results_count} properties searched on hemnet')
+            logger.info(f'{i + 1} of {results_count} properties searched on hemnet')
         hemnet.get_details(search_result)
 
     hemnet.save_results()
