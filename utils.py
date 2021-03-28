@@ -410,11 +410,12 @@ class Faktakontroll:
 
             if 'lgh' in street_address:
                 staddr = street_address[street_address.index('lgh'):]
-                floor = int(re.findall(r'\d', staddr)[1])
                 try:
                     apartment = re.findall(r'\d{4}', staddr)[0]
+                    floor = (int(apartment[0]) - 1) * 10 + int(apartment[1])
                 except:
                     apartment = None
+                    floor = None
             else:
                 floor = None
                 apartment = None
@@ -452,14 +453,16 @@ class Faktakontroll:
             except:
                 is_match = False
 
-            if (hemnet_result['floor'] is None and floor == 0) or (hemnet_result['floor'] == 0 and floor is None):
-                is_match = False
-
-            elif hemnet_result['floor'] and floor:
-                # if both hemnet and faktakontroll have floor info then check if they match
-                if hemnet_result['floor'] != floor:
-                    # if the floors don't match, then don't include them as a match
+            # check floor if floor found on hemnet
+            if hemnet_result['floor'] is not None:
+                # if no floor found in faktakontroll then its not a match
+                if floor is None:
                     is_match = False
+                elif floor < hemnet_result['floor'] - 1:
+                    is_match = False
+                elif floor > hemnet_result['floor'] + 1:
+                    is_match = False
+
 
             if is_match:
                 extra_info = self.get_more_details(result['id'])
