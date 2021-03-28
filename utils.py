@@ -1,17 +1,16 @@
 import os
-import random
 import re
 import time
 import json
-
-import openpyxl
-
 import config
+import random
+import openpyxl
 import requests
 from bs4 import BeautifulSoup
 
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' \
              '(KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+
 logger = config.logger
 
 
@@ -211,46 +210,49 @@ class Hemnet:
             if not entry['complete'] or entry['matches'] == []:
                 continue
 
-            address = entry.get('street_address') or ''
-            city = entry.get('city') or ''
-            house_type = entry.get('house_type') or ''
-            area = entry.get('area') or ''
-            extra_area = entry.get('extra_area') or ''
-            floor = entry.get('floor') or ''
-            total_matches = len(entry['matches'])
-            apartments = []
-            sold = entry.get('sold')
-            row_template = [match_id, total_matches, 1, address, city, house_type, area, extra_area, floor]
+            try:
+                address = entry.get('street_address') or ''
+                city = entry.get('city') or ''
+                house_type = entry.get('house_type') or ''
+                area = entry.get('area') or ''
+                extra_area = entry.get('extra_area') or ''
+                floor = entry.get('floor') or ''
+                total_matches = len(entry['matches'])
+                apartments = []
+                sold = entry.get('sold')
+                row_template = [match_id, total_matches, 1, address, city, house_type, area, extra_area, floor]
 
-            new_rows = []
-            for match in entry['matches']:
-                new_row = row_template.copy()
-                apartment = match['apartment'] or ''
-                if match['apartment'] and match['apartment'] in apartments:
-                    pass
-                else:
-                    apartments.append(match['apartment'])
-
-                new_row += [match['name'], match.get('gender') or '', match.get('personal_number') or '',
-                            match.get('age') or '',
-                            ] + self.get_phone_columns(match['phone']) + [
-                               f'lgh {apartment}' if apartment else '',
-                               'Full' if match[
-                                   'full_match'] else 'Partial',
-                               entry.get('publication_date'),
-                               sold
-                           ]
-                new_rows.append(new_row)
-
-                # check if apartment is empty then number of apartments would be 1
-                for row in new_rows:
-                    if row[len(row_template) + 10].strip() == '':
-                        row[2] = 1
+                new_rows = []
+                for match in entry['matches']:
+                    new_row = row_template.copy()
+                    apartment = match['apartment'] or ''
+                    if match['apartment'] and match['apartment'] in apartments:
+                        pass
                     else:
-                        row[2] = len(apartments)
+                        apartments.append(match['apartment'])
 
-            if len(new_rows) <= 8:
-                data.extend(new_rows)
+                    new_row += [match['name'], match.get('gender') or '', match.get('person_number') or '',
+                                match.get('age') or '',
+                                ] + self.get_phone_columns(match['numbers']) + [
+                                   f'lgh {apartment}' if apartment else '',
+                                   'Full' if match[
+                                       'full_match'] else 'Partial',
+                                   entry.get('publication_date'),
+                                   sold
+                               ]
+                    new_rows.append(new_row)
+
+                    # check if apartment is empty then number of apartments would be 1
+                    for row in new_rows:
+                        if row[len(row_template) + 10].strip() == '':
+                            row[2] = 1
+                        else:
+                            row[2] = len(apartments)
+
+                if len(new_rows) <= 8:
+                    data.extend(new_rows)
+            except Exception as e:
+                logger.error(e)
 
         # create the excel workbook
         wb = openpyxl.Workbook()
@@ -268,13 +270,16 @@ class Hemnet:
         # save the workbook
         filename = os.path.join(config.DOC_DIR, f'{self.location_name}.xlsx')
 
+        # create the doc dir if not present
+        os.makedirs(config.DOC_DIR, exist_ok=True)
+
         # try to save the file at most 3 times in case some error occurs
         for _ in range(3):
             try:
                 wb.save(filename)
-                print(f'data saved as "{filename}"')
+                logger.info(f'data saved as "{filename}"')
                 break
-            except:
+            except Exception as e:
                 time.sleep(random.randint(2, 5))
                 logger.error(f'could not save "{filename}". retrying...')
 
