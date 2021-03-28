@@ -206,7 +206,7 @@ class Hemnet:
         headers = ['Id', 'Tot Hits', 'Tot Apartments', 'Address', 'City', 'Bostadstyp', 'Area', 'Extra Area',
                    'Floor', 'Name', 'Kön', 'Personnr', 'Ålder'] + [
                       'Phone 1', 'Phone 2', 'Phone 3', 'Phone 4', 'Phone 5', 'Phone 6',
-                  ] + ['Apartment', 'Type', 'Publish Date', 'Sold']
+                  ] + ['Apartment', 'Area Match Type', 'Publish Date', 'Sold']
 
         data = []
         for match_id, entry in self.results.items():
@@ -233,8 +233,8 @@ class Hemnet:
                         pass
                     else:
                         apartments.append(match['apartment'])
-
-                    new_row += [match['name'], match.get('gender') or '', match.get('person_number') or '',
+                    # print('pn:', match.get('person_number') or '')
+                    new_row += [match['name'], match.get('gender') or '', match['person_number'],
                                 match.get('age') or '',
                                 ] + self.get_phone_columns(match['numbers']) + [
                                    f'lgh {apartment}' if apartment else '',
@@ -270,7 +270,7 @@ class Hemnet:
         # add filters to all columns
         sheet.auto_filter.ref = sheet.dimensions
 
-        # save the workbook
+        # save the workbook in this location
         filename = os.path.join(config.DOC_DIR, f'{self.location_name}.xlsx')
 
         # create the doc dir if not present
@@ -412,7 +412,7 @@ class Faktakontroll:
             try:
                 is_match = True
 
-                # get floor number
+                # get apartment and floor number
                 street_address = result['fbfStreetAddress']
 
                 if 'lgh' in street_address:
@@ -480,6 +480,7 @@ class Faktakontroll:
                     potential_match.update(extra_info)
 
                     potential_match.update({
+                        'area': area,
                         'name': name,
                         'floor': floor,
                         'apartment': apartment,
