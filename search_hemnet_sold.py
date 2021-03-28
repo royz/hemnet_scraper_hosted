@@ -42,7 +42,6 @@ def main():
     new_sold_properties = [spl for spl in sold_properties_links if spl not in sold_property_cache]
     print(f'{len(sold_properties_links)} sold properties found. {len(new_sold_properties)} new')
 
-    sold_properties = {}
     for i, sold_prop_link in enumerate(new_sold_properties):
         print(f'getting sold date for ({i + 1}/{len(new_sold_properties)}):', end=' ')
         sold = hemnet.get_sold_property_date(sold_prop_link)
@@ -54,7 +53,7 @@ def main():
 
     try:
         with open(SOLD_PROPERTY_CACHE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(sold_properties, f)
+            json.dump(sold_property_cache, f)
         print('saved sold property cache')
     except:
         print('could not save sold property cache')

@@ -112,7 +112,7 @@ class Hemnet:
                 'extra_area': _property.get('supplemental_area'),
                 'publication_date': _property.get('publication_date'),
                 'complete': False,
-                'sold_date': None,
+                'sold_date': '',
                 'matches': []
             }
             return True
