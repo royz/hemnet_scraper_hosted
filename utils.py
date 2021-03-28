@@ -108,6 +108,7 @@ class Hemnet:
                 'street_address': street_address,
                 'floor': floor,
                 'area': _property.get('living_area'),
+                'house_type': _property.get('housing_form') or '',
                 'extra_area': _property.get('supplemental_area'),
                 'publication_date': _property.get('publication_date'),
                 'complete': False,
