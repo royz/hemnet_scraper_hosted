@@ -13,9 +13,11 @@ USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' \
 class Hemnet:
     def __init__(self, location):
         self.location_id = location['id']
-        self.location_name = location['city']
+        self.location_name = location['location']
         self.results = None
         self.session = None
+        self.ignored_location_ids = None
+        self.load_ignored_locations()
         self.load_results()
         self.init_session()
 
@@ -51,10 +53,11 @@ class Hemnet:
                 for li in lis:
                     try:
                         result_id = json.loads(li['data-gtm-item-info'])['id']
-                        results.append({
-                            'url': li.find('a')['href'],
-                            'id': result_id
-                        })
+                        if result_id not in self.ignored_location_ids and result_id not in self.results:
+                            results.append({
+                                'url': li.find('a')['href'],
+                                'id': result_id
+                            })
                     except Exception as e:
                         print(f'could not get link. error: {e}')
                 if len(lis) == 0:
@@ -77,7 +80,7 @@ class Hemnet:
                     break
             if not _property:
                 print('property not found')
-                return None
+                return False
 
             # get address
             street_address = _property.get('street_address')
@@ -96,8 +99,10 @@ class Hemnet:
             except:
                 floor = None
 
-            return {
-                'id': _property.get('id'),
+            property_id = str(_property.get('id'))
+
+            self.results[property_id] = {
+                'id': property_id,
                 'city': _property.get('location'),
                 'street_address': street_address,
                 'floor': floor,
@@ -108,16 +113,17 @@ class Hemnet:
                 'sold_date': None,
                 'matches': []
             }
+            return True
         except Exception as e:
             print(f'could not get data for [{result["url"]}]. errorL: {e}')
-            return None
+            return False
 
     def save_results(self):
-        # create the cache folder if it doesn't exist
         os.makedirs(config.CACHE_DIR, exist_ok=True)
-
-        with open(os.path.join(config.CACHE_DIR, f'{self.location_id}.json'), 'w', encoding='utf-8-sig') as f:
+        cache_file = os.path.join(config.CACHE_DIR, f'{self.location_id}.json')
+        with open(cache_file, 'w', encoding='utf-8-sig') as f:
             json.dump(self.results, f, indent=2)
+        print(f'cache saved as: {cache_file}')
 
     def load_results(self):
         old_result_path = os.path.join(config.CACHE_DIR, f'{self.location_id}.json')
@@ -126,6 +132,13 @@ class Hemnet:
                 self.results = json.load(f)
         else:
             self.results = {}
+
+    def load_ignored_locations(self):
+        try:
+            with open(os.path.join(config.CACHE_DIR, 'ignored.json')) as f:
+                self.ignored_location_ids = json.load(f)
+        except:
+            self.ignored_location_ids = []
 
     def search_sold_properties(self):
         sold_property_links = []
@@ -272,72 +285,76 @@ class Faktakontroll:
                 'person_number': None
             }
 
+    def find_matches(self, hemnet_result, faktakontroll_results):
+        matches = []
+        for result in faktakontroll_results:
+            is_match = True
 
-def find_matches(hemnet_result, faktakontroll_result):
-    matches = []
-    for result in faktakontroll_result:
-        is_match = True
+            # get floor number
+            street_address = result['fbfStreetAddress']
 
-        # get floor number
-        street_address = result['fbfStreetAddress']
-
-        if 'lgh' in street_address:
-            staddr = street_address[street_address.index('lgh'):]
-            floor = int(re.findall(r'\d', staddr)[1])
-            try:
-                apartment = re.findall(r'\d{4}', staddr)[0]
-            except:
-                apartment = None
-        else:
-            floor = None
-            apartment = None
-
-        # get name
-        try:
-            first_name = result.get('firstNames')
-            middle_name = result.get('middleNames')
-            last_name = result.get('lastNames')
-
-            name = first_name or ''
-            if middle_name:
-                name += f' {middle_name}'
-            if last_name:
-                name += f' {last_name}'
-        except:
-            name = ''
-
-        # get area
-        try:
-            area = result['housingInfo']['area']
-        except:
-            area = None
-
-        # check if the data matches with hemnet data
-        potential_match = {'full_match': True}
-
-        try:
-            if hemnet_result['area'] == area:
-                pass
-            elif area - 1 < hemnet_result['area'] < area + 1:
-                potential_match['full_match'] = False
+            if 'lgh' in street_address:
+                staddr = street_address[street_address.index('lgh'):]
+                floor = int(re.findall(r'\d', staddr)[1])
+                try:
+                    apartment = re.findall(r'\d{4}', staddr)[0]
+                except:
+                    apartment = None
             else:
+                floor = None
+                apartment = None
+
+            # get name
+            try:
+                first_name = result.get('firstNames')
+                middle_name = result.get('middleNames')
+                last_name = result.get('lastNames')
+
+                name = first_name or ''
+                if middle_name:
+                    name += f' {middle_name}'
+                if last_name:
+                    name += f' {last_name}'
+            except:
+                name = ''
+
+            # get area
+            try:
+                area = result['housingInfo']['area']
+            except:
+                area = None
+
+            # check if the data matches with hemnet data
+            potential_match = {'full_match': True}
+
+            try:
+                if hemnet_result['area'] == area:
+                    pass
+                elif area - 1 < hemnet_result['area'] < area + 1:
+                    potential_match['full_match'] = False
+                else:
+                    is_match = False
+            except:
                 is_match = False
-        except:
-            is_match = False
 
-        if (hemnet_result['floor'] is None and floor == 0) or (hemnet_result['floor'] == 0 and floor is None):
-            is_match = False
-
-        elif hemnet_result['floor'] and floor:
-            # if both hemnet and faktakontroll have floor info then check if they match
-            if hemnet_result['floor'] != floor:
-                # if the floors don't match, then don't include them as a match
+            if (hemnet_result['floor'] is None and floor == 0) or (hemnet_result['floor'] == 0 and floor is None):
                 is_match = False
 
-        matches.append({
-            'name': name,
-            'floor': floor,
-            'apartment': apartment,
-            'street_address': street_address
-        })
-    return matches
+            elif hemnet_result['floor'] and floor:
+                # if both hemnet and faktakontroll have floor info then check if they match
+                if hemnet_result['floor'] != floor:
+                    # if the floors don't match, then don't include them as a match
+                    is_match = False
+
+            if is_match:
+                extra_info = self.get_more_details(result['id'])
+                potential_match.update(extra_info)
+
+                potential_match.update({
+                    'name': name,
+                    'floor': floor,
+                    'apartment': apartment,
+                    'street_address': street_address
+                })
+                matches.append(potential_match)
+        return matches
