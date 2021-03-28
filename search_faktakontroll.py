@@ -1,8 +1,10 @@
 import os
 import json
 import time
+import pytz
 import config
 import random
+import datetime
 from utils import Faktakontroll, Hemnet
 
 SOLD_PROPERTY_CACHE_FILE = os.path.join(config.CACHE_DIR, 'sold-cache.json')
@@ -42,7 +44,14 @@ def main():
     location = Location()
     faktakontroll = Faktakontroll()
     while True:
-        # TODO: run the script between 8 - 20 swedish time
+        # run the script between 8 - 20 swedish time
+        now = datetime.datetime.now(pytz.timezone('Europe/Stockholm'))
+        hour = now.hour
+        minute = str(now.minute).rjust(2, '0')
+        if hour < 8 or hour > 20:
+            print(f'current time: {hour}:{minute}. office hour not started yet')
+            time.sleep(15 * 60)
+            continue
 
         if config.env != 'dev':
             random_time = random.randint(60, 90)
