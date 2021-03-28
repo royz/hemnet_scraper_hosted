@@ -6,9 +6,11 @@ import json
 import config
 import requests
 from bs4 import BeautifulSoup
+from logger import get_logger
 
 USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' \
              '(KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36'
+logger = get_logger()
 
 
 class Hemnet:
@@ -35,7 +37,7 @@ class Hemnet:
     def search(self):
         results = []
         for page_num in range(1, 51):
-            print(f'{self.location_name}: page {page_num}')
+            logger.info(f'{self.location_name}: page {page_num}')
             params = {
                 'by': 'creation',
                 'housing_form_groups[]': ['houses', 'row_houses', 'apartments'],
@@ -60,11 +62,11 @@ class Hemnet:
                                 'id': result_id
                             })
                     except Exception as e:
-                        print(f'could not get link. error: {e}')
+                        logger.error(f'could not get link. error: {e}')
                 if len(lis) == 0:
                     break
             except Exception as e:
-                print(e)
+                logger.error(e)
         return results
 
     def get_details(self, result):
@@ -80,7 +82,7 @@ class Hemnet:
                 if _property:
                     break
             if not _property:
-                print('property not found')
+                logger.error('property not found')
                 return False
 
             # get address
@@ -117,7 +119,7 @@ class Hemnet:
             }
             return True
         except Exception as e:
-            print(f'could not get data for [{result["url"]}]. errorL: {e}')
+            logger.error(f'could not get data for [{result["url"]}]. errorL: {e}')
             return False
 
     def save_results(self):
@@ -130,7 +132,7 @@ class Hemnet:
             try:
                 with open(cache_file, 'w', encoding='utf-8-sig') as f:
                     json.dump(self.results, f, indent=2)
-                print(f'cache saved as: {cache_file}')
+                logger.info(f'cache saved as: {cache_file}')
                 break
             except:
                 time.sleep(random.randint(3, 10))
@@ -152,9 +154,9 @@ class Hemnet:
 
     def search_sold_properties(self):
         sold_property_links = []
-        print('getting sold properties on hemnet')
+        logger.info('getting sold properties on hemnet')
         for page_num in range(1, 51):
-            print(f'page: {page_num}')
+            logger.debug(f'page: {page_num}')
             params = {
                 'housing_form_groups[]': ['houses', 'row_houses', 'apartments'],
                 'location_ids[]': self.location_id,
@@ -232,13 +234,13 @@ class Faktakontroll:
                 data = response.json()
                 self.access_token = data['accessToken']
                 self.access_token_valid_till = time.time() + data['validFor']
-                print(f'faktakontroll access token updated. valid for: {data["validFor"]}s')
+                logger.info(f'faktakontroll access token updated. valid for: {data["validFor"]}s')
                 return self.access_token
             else:
-                print('could not get access token for faktakontroll')
+                logger.error('could not get access token for faktakontroll')
                 return None
         except:
-            print('could not get access token for faktakontroll')
+            logger.error('could not get access token for faktakontroll')
             return None
 
     def search(self, search_string, try_count=0):
@@ -255,10 +257,10 @@ class Faktakontroll:
             # if failed to get 200 response then try once more
             if response.status_code != 200:
                 if try_count == 0:
-                    print('could not get result from faktakontroll. retrying...')
+                    logger.warning('could not get result from faktakontroll. retrying...')
                     return self.search(search_string, 1)
                 else:
-                    print('could not get result from faktakontroll')
+                    logger.error('could not get result from faktakontroll')
                     return None
 
             data = response.json()
@@ -267,10 +269,10 @@ class Faktakontroll:
 
         except Exception as e:
             if try_count == 0:
-                print(f'error while searching address on faktakontroll. error: {e}. retrying...')
+                logger.warning(f'error while searching address on faktakontroll. error: {e}. retrying...')
                 return self.search(search_string, 1)
             else:
-                print(f'error while searching address on faktakontroll. error: {e}')
+                logger.error(f'error while searching address on faktakontroll. error: {e}')
                 return None
 
     def get_more_details(self, result_id):
