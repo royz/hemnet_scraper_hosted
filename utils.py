@@ -337,8 +337,8 @@ class Faktakontroll:
             else:
                 logger.error('could not get access token for faktakontroll')
                 return None
-        except:
-            logger.error('could not get access token for faktakontroll')
+        except Exception as e:
+            logger.error(f'could not get access token for faktakontroll. error: {e}')
             return None
 
     def search(self, search_string, try_count=0):
@@ -409,75 +409,83 @@ class Faktakontroll:
     def find_matches(self, hemnet_result, faktakontroll_results):
         matches = []
         for result in faktakontroll_results:
-            is_match = True
-
-            # get floor number
-            street_address = result['fbfStreetAddress']
-
-            if 'lgh' in street_address:
-                staddr = street_address[street_address.index('lgh'):]
-                try:
-                    apartment = re.findall(r'\d{4}', staddr)[0]
-                    floor = (int(apartment[0]) - 1) * 10 + int(apartment[1])
-                except:
-                    apartment = None
-                    floor = None
-            else:
-                floor = None
-                apartment = None
-
-            # get name
             try:
-                first_name = result.get('firstNames')
-                middle_name = result.get('middleNames')
-                last_name = result.get('lastNames')
+                is_match = True
 
-                name = first_name or ''
-                if middle_name:
-                    name += f' {middle_name}'
-                if last_name:
-                    name += f' {last_name}'
-            except:
-                name = ''
+                # get floor number
+                street_address = result['fbfStreetAddress']
 
-            # get area
-            try:
-                area = result['housingInfo']['area']
-            except:
-                area = None
-
-            # check if the data matches with hemnet data
-            potential_match = {'full_match': True}
-
-            try:
-                if hemnet_result['area'] == area:
-                    pass
-                elif area - 1 < hemnet_result['area'] < area + 1:
-                    potential_match['full_match'] = False
+                if 'lgh' in street_address:
+                    staddr = street_address[street_address.index('lgh'):]
+                    try:
+                        apartment = re.findall(r'\d{4}', staddr)[0]
+                        floor = (int(apartment[0]) - 1) * 10 + int(apartment[1])
+                    except:
+                        apartment = None
+                        floor = None
                 else:
-                    is_match = False
-            except:
-                is_match = False
+                    floor = None
+                    apartment = None
 
-            # check floor if floor found on hemnet
-            if hemnet_result['floor'] is not None:
-                # if no floor found in faktakontroll then its not a match
-                if floor is None:
-                    is_match = False
-                elif floor < hemnet_result['floor'] - 1:
-                    is_match = False
-                elif floor > hemnet_result['floor'] + 1:
+                # get name
+                try:
+                    first_name = result.get('firstNames')
+                    middle_name = result.get('middleNames')
+                    last_name = result.get('lastNames')
+
+                    name = first_name or ''
+                    if middle_name:
+                        name += f' {middle_name}'
+                    if last_name:
+                        name += f' {last_name}'
+                except:
+                    name = ''
+
+                # get area
+                try:
+                    area = result['housingInfo']['area']
+                except:
+                    area = None
+
+                # check if the data matches with hemnet data
+                potential_match = {'full_match': True}
+
+                try:
+                    if hemnet_result['area'] == area:
+                        pass
+                    elif area - 1 < hemnet_result['area'] < area + 1:
+                        potential_match['full_match'] = False
+                    else:
+                        is_match = False
+                except:
                     is_match = False
 
-            if is_match:
-                extra_info = self.get_more_details(result['id'])
-                potential_match.update(extra_info)
+                # check floor if floor found on hemnet
+                try:
+                    hemnet_floor = int(hemnet_result['floor'])
+                except:
+                    hemnet_floor = None
 
-                potential_match.update({
-                    'name': name,
-                    'floor': floor,
-                    'apartment': apartment,
-                    'street_address': street_address
-                })
-                matches.append(potential_match)
+                if hemnet_floor is not None:
+                    # if no floor found in faktakontroll then its not a match
+                    if floor is None:
+                        is_match = False
+                    elif floor < hemnet_floor - 1:
+                        is_match = False
+                    elif floor > hemnet_floor + 1:
+                        is_match = False
+
+                if is_match:
+                    extra_info = self.get_more_details(result['id'])
+                    potential_match.update(extra_info)
+
+                    potential_match.update({
+                        'name': name,
+                        'floor': floor,
+                        'apartment': apartment,
+                        'street_address': street_address
+                    })
+                    matches.append(potential_match)
+            except Exception as e:
+                logger.error(f'error while trying to find a match. error: {e}')
         return matches
