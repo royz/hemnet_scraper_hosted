@@ -4,3 +4,5 @@ config.py
 *.csv
 *.json
 *.xlsx
+*.txt
+get_ignored_locations
