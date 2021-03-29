@@ -7,3 +7,4 @@ config.py
 *.txt
 get_ignored_locations
 logs
+check_hemnet_queue.py

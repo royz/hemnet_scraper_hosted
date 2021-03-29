@@ -252,7 +252,7 @@ class Hemnet:
                         else:
                             row[2] = len(apartments)
 
-                if len(new_rows) <= 8:
+                if len(new_rows) <= config.max_results:
                     data.extend(new_rows)
             except Exception as e:
                 logger.error(e)
