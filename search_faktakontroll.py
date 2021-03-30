@@ -47,8 +47,8 @@ def main():
     faktakontroll = Faktakontroll()
     while True:
 
-        if config.env != 'dev':
-            # run the script between 8 - 20 swedish time
+        # run the script between 8 - 20 swedish time
+        if config.faktakontroll_limited:
             now = datetime.datetime.now(pytz.timezone('Europe/Stockholm'))
             hour = now.hour
             minute = str(now.minute).rjust(2, '0')
@@ -57,10 +57,6 @@ def main():
                 time.sleep(15 * 60)
                 continue
 
-            # randomly sleep between 60 and 90 seconds
-            random_time = random.randint(60, 90)
-            logger.debug(f'sleeping for {random_time} sec')
-            time.sleep(random_time)
         try:
             hemnet_result = None
             hemnet_location = None
@@ -74,24 +70,28 @@ def main():
 
             if not hemnet_result or not hemnet_location:
                 logger.info('new hemnet result not found')
-                time.sleep(60)
+                time.sleep(15 * 60)
                 continue
 
             hemnet = Hemnet(hemnet_location)
             fk_search_str = f'{hemnet_result["street_address"]}, {hemnet_result["city"]}'
             logger.info(f'searching faktakontroll ({hemnet_location["location"]}): {fk_search_str}')
+
             # search on faktakontroll
             results = faktakontroll.search(fk_search_str)
             matches_found = False
-            if results:
+
+            # if results is not none (results were returned from fk)
+            if results is not None:
                 # find matches from faktakontroll search results
                 matches = faktakontroll.find_matches(hemnet_result, results)
                 matches_found = len(matches) > 0
-                logger.info(f'{len(matches)} matches found on faktakontroll')
-                # save the matches on hemnet cache
+                logger.info(f'{len(results)} results found on faktakontroll. {len(matches)} matches')
+                # save the matches on hemnet cache and set complete as True
                 hemnet.results[hemnet_result["id"]]['matches'] = matches
-            # set complete status as true
-            hemnet.results[hemnet_result["id"]]['complete'] = True
+                hemnet.results[hemnet_result["id"]]['complete'] = True
+
+            hemnet.results[hemnet_result["id"]]['try_count'] += 1
             hemnet.save_results()
 
             # if matches found then save the excel file
