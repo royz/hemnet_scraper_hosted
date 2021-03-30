@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hemnet Scraper</title>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #2C313C;
+            min-height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #links {
+            padding: 20px;
+            background: #d0daf3;
+            border-radius: 10px;
+        }
+
+        a {
+            display: block;
+            text-decoration: none;
+            background: #6496d3;
+            padding: 30px;
+            margin: 5px;
+            border-radius: 6px;
+            color: #fafafa;
+            font-family: sans-serif;
+            text-align: center;
+            transition: all 200ms;
+        }
+
+        a:hover {
+            transform: scale(1.01);
+        }
+    </style>
+</head>
+<body>
+
+<div id="links">
+    <div id="dynamic-links"></div>
+    <!--    <a href="#">Get Scrape Status</a>-->
+</div>
+<script>
+    const select = selector => document.querySelector(selector)
+    const files = [
+        'Stockholms län',
+        'Göteborgs kommun',
+    ]
+    const host = 'http://3.141.209.169:5000'
+    const linksDiv = select('#dynamic-links')
+
+    const renderLinks = () => {
+        linksDiv.innerHTML = ''
+        files.map(file => {
+            const newAnchor = document.createElement('a')
+            newAnchor.setAttribute('href', `${host}/docs/${file}.xlsx`)
+            newAnchor.setAttribute('download', '')
+            newAnchor.setAttribute('class', `download-link`)
+            newAnchor.appendChild(document.createTextNode(`Download ${file}.xlsx`))
+            linksDiv.appendChild(newAnchor)
+        })
+    }
+    renderLinks()
+</script>
+</body>
+</html>
