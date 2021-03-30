@@ -445,6 +445,18 @@ class Faktakontroll:
                     floor = None
                     apartment = None
 
+                # if floor not found then use alternate method
+                # find floor on faktakontroll "\d{1,2} ?tr" or "vån ?\d{1,2}"
+                floor_patterns = [r'\d{1,2} ?tr', r'vån ?\d{1,2}']
+                for re_pattern in floor_patterns:
+                    matches = re.findall(re_pattern, street_address)
+                    if len(matches) > 0:
+                        try:
+                            floor = int(re.findall(re_pattern, matches[0])[0])
+                            break
+                        except Exception:
+                            pass
+
                 # get name
                 try:
                     first_name = result.get('firstNames')
