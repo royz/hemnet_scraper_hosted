@@ -113,7 +113,7 @@ class Hemnet:
             except Exception:
                 pass
 
-            # get floor already not found get it from the entire address
+            # if floor already not found get it from the entire address
             if not floor:
                 for re_pattern in floor_patterns:
                     matches = re.findall(re_pattern, full_address)
@@ -230,7 +230,7 @@ class Hemnet:
 
         data = []
         for match_id, entry in self.results.items():
-            if not entry['complete'] or entry['matches'] == []:
+            if not entry['complete'] or not entry['matches']:
                 continue
 
             try:
@@ -425,7 +425,8 @@ class Faktakontroll:
             }
 
     def find_matches(self, hemnet_result, faktakontroll_results):
-        matches = []
+        matched_results = []
+        other_results = []
         for result in faktakontroll_results:
             try:
                 is_match = True
@@ -480,34 +481,44 @@ class Faktakontroll:
                 # check if the data matches with hemnet data
                 potential_match = {'full_match': True}
 
-                try:
-                    if hemnet_result['area'] == area:
-                        pass
-                    elif area - 1 < hemnet_result['area'] < area + 1:
-                        potential_match['full_match'] = False
-                    else:
-                        is_match = False
-                except:
-                    is_match = False
+                # if house type is villa or radhus then don't match anything. just add the results
+                if hemnet_result.get('house_type') not in ['Radhus', 'Villa']:
+                    ########### compare the areas ###############
+                    # convert the areas to float
+                    try:
+                        hemnet_area = float(hemnet_result.get('area'))
+                    except:
+                        hemnet_area = None
+                    try:
+                        faktakontroll_area = float(area)
+                    except:
+                        faktakontroll_area = None
 
-                # check floor if floor found on hemnet
-                try:
-                    hemnet_floor = int(hemnet_result['floor'])
-                except:
-                    hemnet_floor = None
+                    if hemnet_area:
+                        if not faktakontroll_area:
+                            is_match = False
+                        else:
+                            if hemnet_area == faktakontroll_area:
+                                pass
+                            elif faktakontroll_area - 1 < hemnet_area < faktakontroll_area + 1:
+                                potential_match['full_match'] = False
+                            else:
+                                is_match = False
 
-                if hemnet_floor is not None:
-                    # if no floor found in faktakontroll then its not a match
-                    if floor is None:
-                        is_match = False
-                    elif floor < hemnet_floor - 1:
-                        is_match = False
-                    elif floor > hemnet_floor + 1:
-                        is_match = False
+                    # check floor if floor found on hemnet
+                    try:
+                        hemnet_floor = int(hemnet_result['floor'])
+                    except:
+                        hemnet_floor = None
 
-                if is_match:
-                    extra_info = self.get_more_details(result['id'])
-                    potential_match.update(extra_info)
+                    if hemnet_floor is not None:
+                        # if no floor found in faktakontroll then its not a match
+                        if floor is None:
+                            is_match = False
+                        elif floor < hemnet_floor - 1:
+                            is_match = False
+                        elif floor > hemnet_floor + 1:
+                            is_match = False
 
                     potential_match.update({
                         'area': area,
@@ -516,7 +527,12 @@ class Faktakontroll:
                         'apartment': apartment,
                         'street_address': street_address
                     })
-                    matches.append(potential_match)
+                if is_match:
+                    extra_info = self.get_more_details(result['id'])
+                    potential_match.update(extra_info)
+                    matched_results.append(potential_match)
+                else:
+                    other_results.append(potential_match)
             except Exception as e:
                 logger.error(f'error while trying to find a match. error: {e}')
-        return matches
+        return matched_results
