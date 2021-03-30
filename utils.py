@@ -71,14 +71,16 @@ class Hemnet:
         return results
 
     def get_details(self, result):
-        if config.env != 'dev':
-            time.sleep(random.randint(2, 5))
         try:
+            # get the response
             response = self.session.get(result['url'])
+
+            # get datalayer text
             datalayer_text = re.findall(r'dataLayer *?= *?.*?;', response.text)[0]
             datalayer_text = datalayer_text[datalayer_text.index('['):-1]
             datalayer = json.loads(datalayer_text)
 
+            # get property details from datalayer
             _property = None
             for dl in datalayer:
                 _property = dl.get('property')
@@ -88,22 +90,39 @@ class Hemnet:
                 logger.error('property not found')
                 return False
 
-            # get address
-            street_address = _property.get('street_address')
+            floor = None
+            floor_patterns = [r'\d{1,2} ?tr', r'vån ?\d{1,2}']
+            # get full address address
+            full_address = _property.get('street_address')
+            # remove everything after comma
+            address_wo_floor = full_address.split(',')[0]
+
             try:
-                street_address = street_address.split(',')[0]
-            except:
+                # check for floor in this stripped address
+                # remove from address: <number> tr, vån <number>
+                floor_patterns = [r'\d{1,2} ?tr', r'vån ?\d{1,2}']
+                for re_pattern in floor_patterns:
+                    matches = re.findall(re_pattern, address_wo_floor)
+                    if len(matches) > 0:
+                        try:
+                            floor = re.findall(r'\d{1,2}', matches[0])[0]
+                            address_wo_floor = re.sub(re_pattern, '', address_wo_floor).strip()
+                            break
+                        except Exception:
+                            pass
+            except Exception:
                 pass
 
-            # get floor
-            try:
-                matches = re.findall(r'\d+ ?tr', _property.get('street_address'))
-                if len(matches) > 0:
-                    floor = re.match(r'\d+', matches[0])[0]
-                else:
-                    floor = None
-            except:
-                floor = None
+            # get floor already not found get it from the entire address
+            if not floor:
+                for re_pattern in floor_patterns:
+                    matches = re.findall(re_pattern, full_address)
+                    if len(matches) > 0:
+                        try:
+                            floor = re.findall(r'\d{1,2}', matches[0])[0]
+                            break
+                        except Exception:
+                            pass
 
             property_id = str(_property.get('id'))
 
@@ -111,7 +130,7 @@ class Hemnet:
                 'id': property_id,
                 'url': result['url'],
                 'city': _property.get('location'),
-                'street_address': street_address,
+                'street_address': address_wo_floor,
                 'floor': floor,
                 'area': _property.get('living_area'),
                 'house_type': _property.get('housing_form') or '',
