@@ -138,7 +138,8 @@ class Hemnet:
                 'publication_date': _property.get('publication_date'),
                 'complete': False,
                 'sold_date': '',
-                'matches': []
+                'matches': None,
+                'try_count': 0
             }
             return True
         except Exception as e:

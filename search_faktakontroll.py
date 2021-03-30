@@ -32,7 +32,9 @@ class Location:
             with open(cache_file, encoding='utf-8-sig') as f:
                 cache = json.load(f)
                 for loc_id, info in cache.items():
-                    if info.get('matches') is None:
+                    # check on faktakontroll if there is no match found previously and the script
+                    # tried to find it less than a certain times
+                    if info.get('matches') is None and info['try_count'] < config.fk_max_retry:
                         return info, loc
                 return None, None
         except Exception as e:
