@@ -32,7 +32,7 @@ class Location:
             with open(cache_file, encoding='utf-8-sig') as f:
                 cache = json.load(f)
                 for loc_id, info in cache.items():
-                    if not info['complete']:
+                    if info.get('matches') is None:
                         return info, loc
                 return None, None
         except Exception as e:
@@ -72,6 +72,7 @@ def main():
 
             if not hemnet_result or not hemnet_location:
                 logger.info('new hemnet result not found')
+                time.sleep(60)
                 continue
 
             hemnet = Hemnet(hemnet_location)

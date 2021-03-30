@@ -342,8 +342,7 @@ class Faktakontroll:
             return None
 
     def search(self, search_string, try_count=0):
-        if config.env != 'dev':
-            time.sleep(random.randint(2, 5))
+        config.sleep_between_searches()
 
         data = {
             "searchString": search_string,
@@ -376,8 +375,7 @@ class Faktakontroll:
                 return None
 
     def get_more_details(self, result_id):
-        if config.env != 'dev':
-            time.sleep(random.randint(2, 5))
+        config.sleep_between_each_person()
 
         params = {'subscriptionRefNo': '20.750.025.01'}
 
