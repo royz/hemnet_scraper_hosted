@@ -105,7 +105,7 @@ class Hemnet:
                     matches = re.findall(re_pattern, address_wo_floor)
                     if len(matches) > 0:
                         try:
-                            floor = re.findall(r'\d{1,2}', matches[0])[0]
+                            floor = int(re.findall(r'\d{1,2}', matches[0])[0])
                             address_wo_floor = re.sub(re_pattern, '', address_wo_floor).strip()
                             break
                         except Exception:
@@ -119,7 +119,7 @@ class Hemnet:
                     matches = re.findall(re_pattern, full_address)
                     if len(matches) > 0:
                         try:
-                            floor = re.findall(r'\d{1,2}', matches[0])[0]
+                            floor = int(re.findall(r'\d{1,2}', matches[0])[0])
                             break
                         except Exception:
                             pass
