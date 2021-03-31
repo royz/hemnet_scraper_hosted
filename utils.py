@@ -275,7 +275,8 @@ class Hemnet:
                 if len(new_rows) <= config.max_results:
                     data.extend(new_rows)
             except Exception as e:
-                logger.error(e)
+                # logger.error(e)
+                pass
 
         # create the excel workbook
         wb = openpyxl.Workbook()
@@ -426,7 +427,6 @@ class Faktakontroll:
 
     def find_matches(self, hemnet_result, faktakontroll_results):
         matched_results = []
-        other_results = []
         for result in faktakontroll_results:
             try:
                 is_match = True
@@ -520,6 +520,9 @@ class Faktakontroll:
                         elif floor > hemnet_floor + 1:
                             is_match = False
 
+                if is_match:
+                    extra_info = self.get_more_details(result['id'])
+                    potential_match.update(extra_info)
                     potential_match.update({
                         'area': area,
                         'name': name,
@@ -527,12 +530,7 @@ class Faktakontroll:
                         'apartment': apartment,
                         'street_address': street_address
                     })
-                if is_match:
-                    extra_info = self.get_more_details(result['id'])
-                    potential_match.update(extra_info)
                     matched_results.append(potential_match)
-                else:
-                    other_results.append(potential_match)
             except Exception as e:
                 logger.error(f'error while trying to find a match. error: {e}')
         return matched_results
