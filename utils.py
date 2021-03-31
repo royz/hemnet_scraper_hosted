@@ -248,11 +248,11 @@ class Hemnet:
                 new_rows = []
                 for match in entry['matches']:
                     new_row = row_template.copy()
-                    apartment = match['apartment'] or ''
-                    if match['apartment'] and match['apartment'] in apartments:
+                    apartment = match.get('apartment') or ''
+                    if apartment and apartment in apartments:
                         pass
                     else:
-                        apartments.append(match['apartment'])
+                        apartments.append(apartment)
                     # print('pn:', match.get('person_number') or '')
                     new_row += [match['name'], match.get('gender') or '', match['person_number'],
                                 match.get('age') or '',
